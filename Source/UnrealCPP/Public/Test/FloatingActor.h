@@ -43,7 +43,6 @@ public:
 
 protected:
 	UPROPERTY(VisibleAnywhere)
-	
 	TObjectPtr<UStaticMeshComponent> BodyMesh = nullptr;
 	
 };
