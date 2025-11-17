@@ -92,6 +92,11 @@ void AActionCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	}
 }
 
+void AActionCharacter::AddItem_Implementation(EItemCode Code)
+{
+	UE_LOG(LogTemp, Log, TEXT("아이템 추가 : %d"), Code);
+}
+
 void AActionCharacter::OnAttackEnable(bool bEnable)
 {
 	if (CurrentWeapon.IsValid())
@@ -167,10 +172,18 @@ void AActionCharacter::OnBeginOverlap(AActor* OverlappedActor, AActor* OtherActo
 {
 	UE_LOG(LogTemp, Log, TEXT("Char overlap : other is %s"), *OtherActor->GetName());
 
-	IPickupable* test = Cast<IPickupable>(OtherActor);
-	if (test)
+	// Cast를 이용한 인터페이스 사용
+	//IPickupable* test = Cast<IPickupable>(OtherActor);
+	//if (test)
+	//{
+	//	IPickupable::Execute_OnPickup(OtherActor);
+	//	// test->OnPickup_Implementation();	// 블루프린트구현은 무시
+	//}
+
+	// Implements를 이용한 인터페이스 사용
+	if (OtherActor->Implements<UPickupable>())	// OtherActor가 IPickupable 인터페이스를 구현했는지 확인
 	{
-		IPickupable::Execute_OnPickup(OtherActor);
+		IPickupable::Execute_OnPickup(OtherActor, this);	// 구현이 되어 있으면 실행
 	}
 }
 

@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "AnimNotify/AnimNotifyState_SectionJump.h"
+#include "InventoryOwner.h"
 #include "ActionCharacter.generated.h"
 
 class UInputAction;
@@ -15,7 +16,7 @@ class UStatusComponent;
 //class UAnimNotifyState_SectionJump;
 
 UCLASS()
-class KI_UNREALCPP_API AActionCharacter : public ACharacter
+class KI_UNREALCPP_API AActionCharacter : public ACharacter, public IInventoryOwner
 {
 	GENERATED_BODY()
 
@@ -33,6 +34,9 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	// 아이템 추가 인터페이스 구현
+	virtual void AddItem_Implementation(EItemCode Code);
 
 	// 노티파이가 공격을 가능하게 만들라는 신호가 왔을 때 실행될 함수
 	void OnAttackEnable(bool bEnable);
