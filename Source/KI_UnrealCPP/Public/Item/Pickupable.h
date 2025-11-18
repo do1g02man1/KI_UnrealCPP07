@@ -14,7 +14,7 @@ class UPickupable : public UInterface
 };
 
 /**
- *
+ * 
  */
 class KI_UNREALCPP_API IPickupable
 {

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Player/ActionCharacter.h"
+#include "Common/CommonEnums.h"
 #include "WeaponActor.generated.h"
 
 UCLASS()
@@ -24,13 +25,25 @@ protected:
 	void OnWeaponBeginOverlap(AActor* OverlappedActor, AActor* OtherActor);
 
 public:	
+	// 공격을 활성화/비활성화 하는 함수(컬리전 켜고 끄기)
 	UFUNCTION(BlueprintCallable)
 	void AttackEnable(bool bEnable);
 
+	// 공격을 했을 때 실행되어야 할 함수
+	UFUNCTION(BlueprintCallable)
+	virtual void OnAttack() {};
+
+	// 이 무기로 공격할 수 있는지 확인하는 함수
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	virtual bool CanAttack() { return true; }
+
+	// 무기를 획득했을 때 실행되는 함수
+	UFUNCTION(BlueprintCallable)
+	virtual void OnWeaponPickuped(AActionCharacter* InOwner);
+
 	virtual void PostInitializeComponents() override;
 
-	UFUNCTION(BlueprintCallable)
-	inline void SetWeaponOwner(AActionCharacter* InOwner) { WeaponOwner = InOwner; }
+	inline EItemCode GetWeaponID() const { return WeaponID; }
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -38,6 +51,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UCapsuleComponent> WeaponCollision = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	EItemCode WeaponID = EItemCode::BasicWeapon;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Data")
 	float Damage = 10.0f;

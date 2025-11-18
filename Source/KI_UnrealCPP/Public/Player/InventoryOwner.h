@@ -15,7 +15,7 @@ class UInventoryOwner : public UInterface
 };
 
 /**
- *
+ * 
  */
 class KI_UNREALCPP_API IInventoryOwner
 {

@@ -10,9 +10,9 @@
 #include "ActionCharacter.generated.h"
 
 class UInputAction;
-//class USpringArmComponent;
 class UResourceComponent;
 class UStatusComponent;
+//class USpringArmComponent;
 //class UAnimNotifyState_SectionJump;
 
 UCLASS()
@@ -35,7 +35,7 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// 아이템 추가 인터페이스 구현
+	// 아이템 추가 인터페이스 함수 구현
 	virtual void AddItem_Implementation(EItemCode Code);
 
 	// 노티파이가 공격을 가능하게 만들라는 신호가 왔을 때 실행될 함수
@@ -49,6 +49,13 @@ public:
 		SectionJumpNotify = InSectionJumpNotify;
 		bComboReady = InSectionJumpNotify != nullptr;
 	}
+
+	// 테스트용 함수
+	UFUNCTION(BlueprintCallable)
+	void TestDropUsedWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	void TestDropCurrentWeapon();
 
 protected:
 	// 이동 방향 입력 받기
@@ -71,11 +78,20 @@ protected:
 	void OnBeginOverlap(AActor* OverlappedActor, AActor* OtherActor);
 
 private:
+	UFUNCTION()
+	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
 	// 콤보용 섹션 점프 함수
 	void SectionJumpForCombo();
 
 	// 달리기용 스태미너 소비 함수
 	void SpendRunStamina(float DeltaTime);
+
+	// 사용 다한 무기를 버리는 함수
+	void DropUsedWeapon();
+
+	// 사용 중이던 무기를 버리는 함수
+	void DropCurrentWeapon();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Camera")
@@ -86,6 +102,8 @@ protected:
 	TObjectPtr<class UResourceComponent> Resource = nullptr;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Status")
 	TObjectPtr<class UStatusComponent> Status = nullptr;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Weapon")
+	TObjectPtr<USceneComponent> DropLocation = nullptr;
 
 	// 인풋 액션들
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
@@ -130,7 +148,15 @@ protected:
 
 	// 플레이어가 현재 가지고 있는 무기
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Player|Weapon")
-	TWeakObjectPtr<class AWeaponActor> CurrentWeapon = nullptr;
+	TWeakObjectPtr<class AWeaponActor> CurrentWeapon = nullptr;		
+
+	// 사용 다한 무기 액터(순수 장식)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Weapon")
+	TMap<EItemCode, TSubclassOf<class AUsedWeapon>> UsedWeapons;
+
+	// Pickup할 수 있는 무기 액터
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Weapon")
+	TMap<EItemCode, TSubclassOf<class APickup>> PickupWeapons;
 	
 private:
 	UPROPERTY()
@@ -139,6 +165,10 @@ private:
 	// 현재 진행중인 섹션점프 노티파이 스테이트
 	UPROPERTY()
 	TWeakObjectPtr<UAnimNotifyState_SectionJump> SectionJumpNotify;
+
+	// AllowPrivateAccess 확인용
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Weapon", meta = (AllowPrivateAccess = "true"))
+	//bool bWeaponUseEnded = false;
 
 	// 콤보가 가능한 상황인지 확인하기 위한 플래그
 	bool bComboReady = false;

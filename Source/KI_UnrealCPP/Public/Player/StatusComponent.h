@@ -18,11 +18,11 @@ public:
 
 	// 스테이터스와 모디파이어를 기반으로 공격력 계산해서 리턴하는 함수
 	float GetAttackPower() const;
-	
+
 	// 스테이터스와 모디파이어를 기반으로 최대 체력을 계산해서 리턴하는 함수
 	float GetMaxHealth() const;
 
-	// 스테이터스와 모디파이어를 기반으로 최대 스태미너를 계산해서 리턴하는 함수
+	// 스테이터스와 모디파이어를 기반으로 최대 스테미너를 계산해서 리턴하는 함수
 	float GetMaxStamina() const;
 
 protected:
