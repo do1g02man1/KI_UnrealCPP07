@@ -8,8 +8,10 @@
 #include "Camera/CameraComponent.h"
 #include "Player/ResourceComponent.h"
 #include "Player/StatusComponent.h"
+#include "Player/WeaponManagerComponent.h"
 #include "Weapon/WeaponActor.h"
 #include "Weapon/UsedWeapon.h"
+#include "Weapon/ConsumableWeapon.h"
 #include "Item/Pickupable.h"
 #include "Item/Pickup.h"
 
@@ -31,9 +33,11 @@ AActionCharacter::AActionCharacter()
 
 	DropLocation = CreateDefaultSubobject<USceneComponent>(TEXT("DropLocation"));
 	DropLocation->SetupAttachment(RootComponent);
+	DropLocation->SetRelativeLocation(FVector(80.0f, 30.0f, 0.0f));
 
 	Resource = CreateDefaultSubobject<UResourceComponent>(TEXT("PlayerResource"));
 	Status = CreateDefaultSubobject<UStatusComponent>(TEXT("PlayerStatus"));
+	WeaponManager = CreateDefaultSubobject<UWeaponManagerComponent>(TEXT("WeaponManager"));
 
 	bUseControllerRotationYaw = false;	// 컨트롤러의 Yaw 회전 사용 안함
 	GetCharacterMovement()->bOrientRotationToMovement = true;	// 이동 방향으로 캐릭터 회전
@@ -97,10 +101,34 @@ void AActionCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	}
 }
 
-void AActionCharacter::AddItem_Implementation(EItemCode Code)
+void AActionCharacter::AddItem_Implementation(EItemCode Code, int32 Count)
 {
-	const UEnum* EnumPtr = StaticEnum<EItemCode>();
-	UE_LOG(LogTemp, Log, TEXT("아이템 추가 : %s"), *EnumPtr->GetDisplayNameTextByValue(static_cast<int8>(Code)).ToString());
+	//const UEnum* EnumPtr = StaticEnum<EItemCode>();
+	//UE_LOG(LogTemp, Log, TEXT("아이템 추가 : %s"), *EnumPtr->GetDisplayNameTextByValue(static_cast<int8>(Code)).ToString());
+
+	EquipWeapon(Code);
+	CurrentWeapon->OnWeaponPickuped(Count);
+}
+
+void AActionCharacter::EquipWeapon(EItemCode WeaponCode)
+{
+	if (CurrentWeapon.IsValid())
+	{
+		// 장비하고 있던 무기가 기본 무기가 아니면
+		if (CurrentWeapon->GetWeaponID() != EItemCode::BasicWeapon	// 장비하고 있던 무기가 Consumable이고
+			&& CurrentWeapon->GetWeaponID() != WeaponCode			// 새로 장비할 무기와 다른 종류고
+			&& CurrentWeapon->CanAttack())							// 장비하고 있던 무기에 회수가 남아있는 상황이면
+		{
+			DropCurrentWeapon(CurrentWeapon->GetWeaponID());
+		}
+
+		// 장비하고 있던 무기는 해제
+		CurrentWeapon->WeaponActivate(false);
+	}
+
+	// WeaponCode에 해당하는 무기 장비
+	CurrentWeapon = WeaponManager->GetEquippedWeapon(WeaponCode);
+	CurrentWeapon->WeaponActivate(true);
 }
 
 void AActionCharacter::OnAttackEnable(bool bEnable)
@@ -113,13 +141,16 @@ void AActionCharacter::OnAttackEnable(bool bEnable)
 
 void AActionCharacter::TestDropUsedWeapon()
 {
-	DropUsedWeapon();
+	if (CurrentWeapon.IsValid())
+	{
+		DropWeapon(CurrentWeapon->GetWeaponID());
+	}
 }
 
 void AActionCharacter::TestDropCurrentWeapon()
 {
 	UE_LOG(LogTemp, Log, TEXT("TestDropCurrentWeapon"));
-	DropCurrentWeapon();
+	DropCurrentWeapon(CurrentWeapon->GetWeaponID());
 }
 
 void AActionCharacter::OnMoveInput(const FInputActionValue& InValue)
@@ -220,7 +251,9 @@ void AActionCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterru
 	// UE_LOG(LogTemp, Log, TEXT("공격 몽타주가 끝남"));
 	if (CurrentWeapon.IsValid() && !CurrentWeapon->CanAttack())	// CurrentWeapon이 공격할 수 없으면(=사용회수가 안남았다)
 	{
-		DropUsedWeapon();
+		//DropUsedWeapon();		
+		DropWeapon(CurrentWeapon->GetWeaponID());	// 현재 사용 중인 무기 버리기
+		EquipWeapon(EItemCode::BasicWeapon);
 	}
 }
 
@@ -256,32 +289,33 @@ void AActionCharacter::SpendRunStamina(float DeltaTime)
 	//GetWorld()->GetFirstPlayerController()->GetHUD();
 }
 
-void AActionCharacter::DropUsedWeapon()
-{	
+void AActionCharacter::DropWeapon(EItemCode WeaponCode)
+{
 	UE_LOG(LogTemp, Log, TEXT("다쓴 무기 버리기"));
-	if (CurrentWeapon.IsValid())
+	if (TSubclassOf<AUsedWeapon> usedClass = WeaponManager->GetUsedWeaponClass(WeaponCode))
 	{
-		if (TSubclassOf<AUsedWeapon>* usedClass = UsedWeapons.Find(CurrentWeapon->GetWeaponID()))
-		{
-			GetWorld()->SpawnActor<AActor>(
-				*usedClass,
-				DropLocation->GetComponentLocation(),
-				GetActorRotation());	
-		}
+		GetWorld()->SpawnActor<AActor>(
+			usedClass,
+			DropLocation->GetComponentLocation(),
+			GetActorRotation());
 	}
 }
 
-void AActionCharacter::DropCurrentWeapon()
+void AActionCharacter::DropCurrentWeapon(EItemCode WeaponCode)
 {
 	if (CurrentWeapon.IsValid() && CurrentWeapon->GetWeaponID() != EItemCode::BasicWeapon)
 	{
-		if (TSubclassOf<APickup>* pickupClass = PickupWeapons.Find(CurrentWeapon->GetWeaponID()))
+		if (TSubclassOf<APickup> pickupClass = WeaponManager->GetPickupWeaponClass(WeaponCode))
 		{
 			APickup* pickup = GetWorld()->SpawnActor<APickup>(
-				*pickupClass,
+				pickupClass,
 				DropLocation->GetComponentLocation(),
 				GetActorRotation()
 			);
+
+			// 새로 생긴 픽업에 남은 회수 넣기
+			AConsumableWeapon* conWeapon = Cast<AConsumableWeapon>(CurrentWeapon);
+			pickup->SetPickupCount(conWeapon->GetRemainingUseCount());
 
 			FVector velocity = (GetActorForwardVector() + GetActorUpVector()) * 300.0f;
 			pickup->AddImpulse(velocity);
